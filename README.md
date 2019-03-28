@@ -11,3 +11,14 @@ when login with pc.is_pc_ip_in_map() begin
 end
 ```
 
+For add/remove maps, just edit:
+```
+		std::map<DWORD, std::map<DWORD, DWORD>> maps = {
+			{ 181, {} },
+			{ 182, {} },
+			{ 183, {} }
+		};
+```
+In map_manager.h
+
+
