@@ -1,72 +1,102 @@
 #include "stdafx.h"
-#include "constants.h"
-#include "config.h"
-#include "questmanager.h"
-#include "start_position.h"
-#include "packet.h"
 #include "buffer_manager.h"
-#include "log.h"
 #include "char.h"
 #include "char_manager.h"
 #include "map_manager.h"
 #include "desc.h"
 
-
-bool MapManager::Initialize()
+void MapManager::Initialize()
 {
-	itertype(maps) iter = maps.begin();
-	for (; iter != maps.end(); ++iter) iter->second.clear();
-	return true;
+	Clear();
 }
 
 void MapManager::Destroy()
 {
-	itertype(maps) iter = maps.begin();
-	for (; iter != maps.end(); ++iter) iter->second.clear();
+	Clear();
 }
 
-bool MapManager::IsUniqueIPMap(DWORD map_index){
-	if (maps.count(map_index) != 0) 
-		return true;
-	else return false;
-}
-
-void MapManager::Enter(LPCHARACTER pChar)
+// Removes all elements from the map container (which are destroyed), leaving the container with a size of 0.
+void MapManager::Clear()
 {
-	if (pChar){
-		DWORD player_index = pChar->GetMapIndex();
-		if(IsUniqueIPMap(player_index)){
-			DWORD pid = pChar->GetPlayerID();
-			maps.at(player_index).insert(std::make_pair(pid, pid));
-		}
-	}
+	for (auto iter = m_map_manager.begin(); iter != m_map_manager.end(); ++iter)
+		iter->second.clear();
 }
 
+// Count elements with a specific key, return 1 (if the element is found) or zero (otherwise).
+const bool MapManager::IsUniqueIPMap(const DWORD dwMapIndex)
+{
+	return m_map_manager.count(dwMapIndex) != 0;
+}
 
-bool MapManager::IsPlayerIPInMap(LPCHARACTER pChar)
+// Returns the number of elements in the map container.
+const size_t MapManager::GetIPMapCount(const DWORD dwMapIndex)
+{
+	return (m_map_manager[dwMapIndex]).size();
+}
+
+/*
+char.cpp : #include "map_manager.h"
+	marriage::CManager::instance().Logout(this);
+	+ MapManager::instance().Disconnect(this);
+*/
+void MapManager::Disconnect(const LPCHARACTER ch)
+{
+	if (!ch)
+		return;
+
+	const DWORD dwMapIndex = ch->GetMapIndex();	
+	if (!IsUniqueIPMap(dwMapIndex))
+		return;
+
+	// Remove the player id from map list if exist.
+	const auto it = std::find(m_map_manager[dwMapIndex].begin(), m_map_manager[dwMapIndex].end(), ch->GetPlayerID());
+	if (it != m_map_manager[dwMapIndex].end())
+		m_map_manager[dwMapIndex].erase(it);
+}
+
+void MapManager::Enter(const LPCHARACTER ch)
+{
+	if (!ch)
+		return;
+	
+	const DWORD dwPID = ch->GetPlayerID();
+	const DWORD dwMapIndex = ch->GetMapIndex();
+
+	if (!IsUniqueIPMap(dwMapIndex))
+		return;
+
+	// Return iterator to the first element satisfying the condition or last if no such element is found.
+	const auto it = std::find(m_map_manager[dwMapIndex].begin(), m_map_manager[dwMapIndex].end(), dwPID);
+
+	// If no element is found in the map, find() returns map.end().
+	if (it != m_map_manager[dwMapIndex].end())
+		return;
+
+	// Add the player id into map list.
+	m_map_manager[dwMapIndex].emplace_back(dwPID);
+}
+
+const bool MapManager::IsPlayerIPInMap(const LPCHARACTER ch)
 {	
-	if (pChar == NULL) return false;
-	if (!IsUniqueIPMap(pChar->GetMapIndex())) return false;
-	
-	std::map<DWORD, DWORD> map_players = maps.at(pChar->GetMapIndex());
-	if (map_players.size() <= 0) return false;
+	if (!ch)
+		return false;
 
-	itertype(map_players) iter = map_players.begin();
+	if (!IsUniqueIPMap(ch->GetMapIndex()))
+		return false;
+
+	if (GetIPMapCount() == 0)
+		return false;
+
 	LPCHARACTER pkChar = NULL;
-	
-	std::string	player_ip = pChar->GetDesc()->GetHostName();
-
-	for (; iter != map_players.end(); ++iter)
+	// Range-based for loop, iterating the std::list with player pids.
+	for (const auto dwPID : m_map_manager[ch->GetMapIndex()])
 	{
-		pkChar = CHARACTER_MANAGER::instance().FindByPID(iter->second);
+		if (!(pkChar = CHARACTER_MANAGER::instance().FindByPID(dwPID)))
+			continue;
 
-		if (pkChar != NULL)
-		{
-			if ((player_ip.compare(pkChar->GetDesc()->GetHostName()) == 0) && (pChar->GetPlayerID() != pkChar->GetPlayerID())){
-				return true;
-			}
-		}
+		if (!strcmp(ch->GetDesc()->GetHostName(), pkChar->GetDesc()->GetHostName()) && ch->GetPlayerID() != pkChar->GetPlayerID())
+			return true;
 	}
+	
 	return false;
 }
-
