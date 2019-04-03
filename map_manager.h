@@ -3,14 +3,14 @@
 class MapManager: public singleton<MapManager>
 {
 	private:
-		std::map<const DWORD, std::list<const DWORD>> m_map_manager = {
+		std::map<DWORD, std::list<DWORD>> m_map_manager = {
 			{ 181, {} },
 			{ 182, {} },
 			{ 183, {} }
 		};
 		
 	public:
-		const bool      Initialize();
+		void      Initialize();
 		void            Clear();
 		void            Destroy();
 

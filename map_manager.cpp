@@ -34,11 +34,7 @@ const size_t MapManager::GetIPMapCount(const DWORD dwMapIndex)
 	return (m_map_manager[dwMapIndex]).size();
 }
 
-/*
-char.cpp : #include "map_manager.h"
-	marriage::CManager::instance().Logout(this);
-	+ MapManager::instance().Disconnect(this);
-*/
+
 void MapManager::Disconnect(const LPCHARACTER ch)
 {
 	if (!ch)
@@ -84,12 +80,12 @@ const bool MapManager::IsPlayerIPInMap(const LPCHARACTER ch)
 	if (!IsUniqueIPMap(ch->GetMapIndex()))
 		return false;
 
-	if (GetIPMapCount() == 0)
+	if (GetIPMapCount(ch->GetMapIndex()) == 0)
 		return false;
 
 	LPCHARACTER pkChar = NULL;
 	// Range-based for loop, iterating the std::list with player pids.
-	for (const auto dwPID : m_map_manager[ch->GetMapIndex()])
+	for (DWORD dwPID : m_map_manager[ch->GetMapIndex()])
 	{
 		if (!(pkChar = CHARACTER_MANAGER::instance().FindByPID(dwPID)))
 			continue;
